@@ -1,56 +1,48 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows;
-using System.Windows.Data;
-using System.Net;
+using System.Text;
+using System.Threading.Tasks;
 using System.Net.Sockets;
-using System.Net.NetworkInformation;
+using System.Net;
 
-namespace SocketPortScaner
+namespace PortScanner
 {
-	public partial class MainWindow : Gtk.Window
-	{
-			
-		public MainWindow()
-		{
-			base (Gtk.WindowType.Toplevel)
-			InitializeComponent();
+    class Program
+    {
+        private static IPAddress address;
+        private static Socket sSocket;
+        static void Main(string[] args)
+        {
+            Console.Write("Enter IP for listening: ");
+            address = IPAddress.Parse(Console.ReadLine());
+            Console.WriteLine("Press Ctrl+C to interrupt.");
+            for (int i = 1; i < 65536; i++)
+            {
+                try
+                {
+                    IPEndPoint endPoint = new IPEndPoint(address, i);
+                    sSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    sSocket.Connect(endPoint);
+                    Console.WriteLine("\nPort {0} is listening.", i);
+                }
+                catch (SocketException ignored)
+                {
+                    Console.Write(".");
+                    if (ignored.ErrorCode != 10061)
+                        Console.WriteLine(ignored.Message);
+                }
+                finally
+                {
+                    if (sSocket.Connected)
+                    {
+                        sSocket.Shutdown(SocketShutdown.Both);
+                        sSocket.Close();
+                    }
+                }
 
-			List<PortInfo> pi = MainWindow.GetOpenPort();
-			listview_scaner.ItemsSource = pi;
-		}
-
-		private static List<PortInfo> GetOpenPort()
-		{
-			IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
-			IPEndPoint[] tcpEndPoints = properties.GetActiveTcpListeners();
-			TcpConnectionInformation[] tcpConnections = properties.GetActiveTcpConnections();
-
-			return tcpConnections.Select(p =>
-				{
-					return new PortInfo(
-						i: p.LocalEndPoint.Port,
-						local: String.Format("{0}:{1}", p.LocalEndPoint.Address, p.LocalEndPoint.Port),
-						remote: String.Format("{0}:{1}", p.RemoteEndPoint.Address, p.RemoteEndPoint.Port),
-						state: p.State.ToString());
-				}).ToList();
-		}
-	}
-
-	class PortInfo
-	{
-		public int PortNumber { get; set; }
-		public string Local { get; set; }
-		public string Remote { get; set; }
-		public string State { get; set; }
-
-		public PortInfo(int i, string local, string remote, string state)
-		{
-			PortNumber = i;
-			Local = local;
-			Remote = remote;
-			State = state;
-		}
-	}
+            }
+            Console.ReadKey();
+        }
+    }
 }
